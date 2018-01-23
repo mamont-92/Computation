@@ -186,13 +186,15 @@ void callMinWithTime(QString name, Func func, float * ptr, size_t num, float & m
 
 int main(int argc, char *argv[])
 {
-    qDebug() << "hello SSE";
+
 
     auto alignment = 16;
-    auto N = 4*100000000;
+    size_t N = 4*100000000;
 
-    float *  ptr = (float*)_aligned_malloc(N*sizeof(float), alignment);
-    //float * ptr = (float*) malloc(N*sizeof(float));
+    qDebug() << "Element Count: " << N;
+
+    auto *  ptr = (float*)_aligned_malloc(N*sizeof(float), alignment);
+
     if (!ptr)
         qDebug() << "mem alloc error";
 
