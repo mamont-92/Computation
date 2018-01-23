@@ -31,6 +31,46 @@ void min_max_sse(float * alligned_ptr, size_t num, float & min, float & max)
     max = res_max;
 }
 
+
+/*void min_max_scalar_sse_openmp(float * ptr, size_t num, float & min, float & max)
+{
+    float res_min = ptr[0];
+    float res_max = res_min;
+
+#pragma omp parallel
+    {
+        float local_min = res_min, localMax = res_max;
+        __m128 * ptr = (__m128*) ptr;
+        __m128 min_val = ptr[0];
+        __m128 max_val = min_val;
+        qint64 n = num / 4;
+#pragma omp for
+        for(qint64 i = 0; i < n; ++i){
+            __m128 val = ptr[i];
+            min_val = _mm_min_ps(min_val, val);
+            max_val = _mm_max_ps(max_val, val);
+        }
+
+        for (int i = 0; i < 3; i++) {
+            min_val = _mm_min_ps(min_val, _mm_shuffle_ps(min_val, min_val, 0x93));
+            max_val = _mm_max_ps(max_val, _mm_shuffle_ps(max_val, max_val, 0x93));
+        }
+
+        _mm_store_ss(&local_min, min_val);
+        _mm_store_ss(&localMax, max_val);
+
+#pragma omp critical
+        {
+            if(res_min > local_min)
+                res_min = local_min;
+            if(res_max < localMax)
+                res_max = localMax;
+        }
+    }
+    min = res_min;
+    max = res_max;
+}*/
+
 void min_max_scalar_if(float * ptr, size_t num, float & min, float & max)
 {
     float res_min = ptr[0];
@@ -124,10 +164,12 @@ int main(int argc, char *argv[])
     }
 
     float min, max;
+    callMinWithTime(min_max_sse, ptr, N, min, max);
     callMinWithTime(min_max_scalar_if, ptr, N, min, max);
     callMinWithTime(min_max_scalar_if_else, ptr, N, min, max);
     callMinWithTime(min_max_sse, ptr, N, min, max);
     callMinWithTime(min_max_scalar_if_openmp, ptr, N, min, max);
+    //callMinWithTime(min_max_scalar_sse_openmp, ptr, N, min, max);
 
     return 0;
 }
