@@ -33,19 +33,22 @@ void min_max_sse(float * alligned_ptr, size_t num, float & min, float & max)
 }
 
 
-/*void min_max_scalar_sse_openmp(float * ptr, size_t num, float & min, float & max)
+void min_max_scalar_sse_openmp(float * alligned_ptr, size_t num, float & min, float & max)
 {
-    float res_min = ptr[0];
+    float res_min = alligned_ptr[0];
     float res_max = res_min;
 
 #pragma omp parallel
     {
-        float local_min = res_min, localMax = res_max;
-        __m128 * ptr = (__m128*) ptr;
+        float alignas(16) local_min;
+        float alignas(16) local_max;
+
+        __m128 * ptr = (__m128*) alligned_ptr;
         __m128 min_val = ptr[0];
         __m128 max_val = min_val;
         qint64 n = num / 4;
-#pragma omp for
+
+#pragma omp for nowait
         for(qint64 i = 0; i < n; ++i){
             __m128 val = ptr[i];
             min_val = _mm_min_ps(min_val, val);
@@ -58,19 +61,19 @@ void min_max_sse(float * alligned_ptr, size_t num, float & min, float & max)
         }
 
         _mm_store_ss(&local_min, min_val);
-        _mm_store_ss(&localMax, max_val);
+        _mm_store_ss(&local_max, max_val);
 
 #pragma omp critical
         {
             if(res_min > local_min)
                 res_min = local_min;
-            if(res_max < localMax)
-                res_max = localMax;
+            if(res_max < local_max)
+                res_max = local_max;
         }
     }
     min = res_min;
     max = res_max;
-}*/
+}
 
 void min_max_scalar_if(float * ptr, size_t num, float & min, float & max)
 {
@@ -203,7 +206,7 @@ int main(int argc, char *argv[])
     callMinWithTime(toString(min_max_scalar_if_else), min_max_scalar_if_else, ptr, N, min, max);
     callMinWithTime(toString(min_max_scalar_if_openmp), min_max_scalar_if_openmp, ptr, N, min, max);
     callMinWithTime(toString(min_max_scalar_if_else_openmp), min_max_scalar_if_else_openmp, ptr, N, min, max);
-    //callMinWithTime(min_max_scalar_sse_openmp, ptr, N, min, max);
+    callMinWithTime(toString(min_max_scalar_sse_openmp), min_max_scalar_sse_openmp, ptr, N, min, max);
 
     return 0;
 }
