@@ -5,6 +5,7 @@
 #include <malloc.h>
 #include "xmmintrin.h"
 
+#define toString(name) #name
 
 
 void min_max_sse(float * alligned_ptr, size_t num, float & min, float & max)
@@ -120,6 +121,38 @@ void min_max_scalar_if_openmp(float * ptr, size_t num, float & min, float & max)
     max = res_max;
 }
 
+void min_max_scalar_if_else_openmp(float * ptr, size_t num, float & min, float & max)
+{
+    float res_min = ptr[0];
+    float res_max = res_min;
+
+#pragma omp parallel
+    {
+        float localMin = res_min;
+        float localMax = res_max;
+
+#pragma omp for nowait
+        for(qint64 i = 0; i <num; ++i){
+            float val = ptr[i];
+            if(val < localMin)
+                localMin = val;
+            else if (val > localMax)
+                localMax = val;
+        }
+
+#pragma omp critical
+        {
+            if(res_min > localMin)
+                res_min = localMin;
+            if(res_max < localMax)
+                res_max = localMax;
+        }
+    }
+
+    min = res_min;
+    max = res_max;
+}
+
 
 void min_max_scalar_if_else(float * ptr, size_t num, float & min, float & max)
 {
@@ -139,13 +172,13 @@ void min_max_scalar_if_else(float * ptr, size_t num, float & min, float & max)
 }
 
 template<typename Func>
-void callMinWithTime(Func func, float * ptr, size_t num, float & min, float & max){
+void callMinWithTime(QString name, Func func, float * ptr, size_t num, float & min, float & max){
     auto start = std::chrono::system_clock::now();
     func(ptr, num, min, max);
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end-start;
 
-    qDebug() << "min: " << min << "max: " << max << "elapsed: " << elapsed_seconds.count();
+    qDebug() << name<< " elapsed: " << elapsed_seconds.count() << "min: " << min << "max: " << max;
 }
 
 int main(int argc, char *argv[])
@@ -156,6 +189,7 @@ int main(int argc, char *argv[])
     auto N = 4*100000000;
 
     float *  ptr = (float*)_aligned_malloc(N*sizeof(float), alignment);
+    //float * ptr = (float*) malloc(N*sizeof(float));
     if (!ptr)
         qDebug() << "mem alloc error";
 
@@ -164,11 +198,11 @@ int main(int argc, char *argv[])
     }
 
     float min, max;
-    callMinWithTime(min_max_sse, ptr, N, min, max);
-    callMinWithTime(min_max_scalar_if, ptr, N, min, max);
-    callMinWithTime(min_max_scalar_if_else, ptr, N, min, max);
-    callMinWithTime(min_max_sse, ptr, N, min, max);
-    callMinWithTime(min_max_scalar_if_openmp, ptr, N, min, max);
+    callMinWithTime(toString(min_max_sse), min_max_sse, ptr, N, min, max);
+    callMinWithTime(toString(min_max_scalar_if), min_max_scalar_if, ptr, N, min, max);
+    callMinWithTime(toString(min_max_scalar_if_else), min_max_scalar_if_else, ptr, N, min, max);
+    callMinWithTime(toString(min_max_scalar_if_openmp), min_max_scalar_if_openmp, ptr, N, min, max);
+    callMinWithTime(toString(min_max_scalar_if_else_openmp), min_max_scalar_if_else_openmp, ptr, N, min, max);
     //callMinWithTime(min_max_scalar_sse_openmp, ptr, N, min, max);
 
     return 0;
